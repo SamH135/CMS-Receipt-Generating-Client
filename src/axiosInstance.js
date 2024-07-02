@@ -9,7 +9,7 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     console.log('Interceptor: Preparing request', config.url);
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('rgcToken');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
       console.log("Token being sent:", token);

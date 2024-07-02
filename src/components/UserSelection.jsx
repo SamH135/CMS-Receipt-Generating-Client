@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
+import { setRGCUsername } from '../redux/actions/authActions';
 import axiosInstance from '../axiosInstance';
 
 const UserSelection = () => {
@@ -32,16 +33,11 @@ const UserSelection = () => {
     }
   };
 
-  const handleUserSelect = async () => {
+  const handleUserSelect = () => {
     if (selectedUser) {
-      try {
-        const response = await axiosInstance.post('/api/rgc/setUsername', { username: selectedUser });
-        dispatch({ type: 'SET_USERNAME', payload: response.data.username });
-        navigate('/client-selection');
-      } catch (error) {
-        console.error('Error setting username:', error);
-        setError('Failed to set username. Please try again.');
-      }
+      dispatch(setRGCUsername(selectedUser));
+      localStorage.setItem('rgcUsername', selectedUser); // Explicitly set in localStorage
+      navigate('/client-selection');
     }
   };
 

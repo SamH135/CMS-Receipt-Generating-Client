@@ -1,34 +1,35 @@
 // src/redux/reducers/authReducer.js
-import { LOGIN_SUCCESS, LOGIN_FAILURE, LOGOUT } from '../actions/authActions';
+import { LOGIN_SUCCESS, LOGOUT, SET_RGC_USERNAME } from '../actions/authActions';
 
 const initialState = {
-  token: null,
-  isAuthenticated: false,
-  error: null
+  token: localStorage.getItem('rgcToken'),
+  rgcUsername: localStorage.getItem('rgcUsername') || '',
+  isAuthenticated: !!localStorage.getItem('rgcToken'),
 };
 
 const authReducer = (state = initialState, action) => {
   switch (action.type) {
     case LOGIN_SUCCESS:
+      localStorage.setItem('rgcToken', action.payload.token);
       return {
         ...state,
-        token: action.payload,
+        token: action.payload.token,
         isAuthenticated: true,
-        error: null
-      };
-    case LOGIN_FAILURE:
-      return {
-        ...state,
-        token: null,
-        isAuthenticated: false,
-        error: action.payload
       };
     case LOGOUT:
+      localStorage.removeItem('rgcToken');
+      localStorage.removeItem('rgcUsername');
       return {
         ...state,
         token: null,
+        rgcUsername: '',
         isAuthenticated: false,
-        error: null
+      };
+    case SET_RGC_USERNAME:
+      localStorage.setItem('rgcUsername', action.payload);
+      return {
+        ...state,
+        rgcUsername: action.payload,
       };
     default:
       return state;
