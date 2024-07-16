@@ -4,6 +4,8 @@ export const LOGIN_SUCCESS = 'LOGIN_SUCCESS';
 export const LOGIN_FAILURE = 'LOGIN_FAILURE';
 export const LOGOUT = 'LOGOUT';
 export const SET_RGC_USERNAME = 'SET_RGC_USERNAME';
+export const SET_SELECTED_CLIENT = 'SET_SELECTED_CLIENT';
+
 
 
 export const loginSuccess = (token) => ({
@@ -40,3 +42,8 @@ export const rgcLogin = (passcode) => async (dispatch) => {
     return false;
   }
 };
+
+export const setSelectedClient = (client) => ({
+  type: SET_SELECTED_CLIENT,
+  payload: client,
+});

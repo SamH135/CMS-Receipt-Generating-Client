@@ -1,10 +1,11 @@
 // src/redux/reducers/authReducer.js
-import { LOGIN_SUCCESS, LOGOUT, SET_RGC_USERNAME } from '../actions/authActions';
+import { LOGIN_SUCCESS, LOGOUT, SET_RGC_USERNAME, SET_SELECTED_CLIENT } from '../actions/authActions';
 
 const initialState = {
   token: localStorage.getItem('rgcToken'),
   rgcUsername: localStorage.getItem('rgcUsername') || '',
   isAuthenticated: !!localStorage.getItem('rgcToken'),
+  selectedClient: null
 };
 
 const authReducer = (state = initialState, action) => {
@@ -30,6 +31,11 @@ const authReducer = (state = initialState, action) => {
       return {
         ...state,
         rgcUsername: action.payload,
+      };
+    case SET_SELECTED_CLIENT:
+      return {
+        ...state,
+        selectedClient: action.payload,
       };
     default:
       return state;

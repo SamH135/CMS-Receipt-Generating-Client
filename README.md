@@ -68,3 +68,58 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+
+
+
+
+
+`To-Do:`
+
+- make 'add user' a button that expands that option instead of having the menu there
+
+- establish logic for receipt creation
+
+
+
+
+
+
+**The RGC workflow includes:**
+
+1. Login: User enters a 4-digit passcode.
+
+2. Select/Add User: Dropdown of usernames or option to add a new user from the ‘User’ table in the database.
+
+3. Select Client: Search bar and dropdown to display client names from the database, updating as the user types.
+
+4. Receipt Table: Modular input table based on client type:
+
+        - Auto clients: Uses AutoReceiptMetals table to store pre-defined weights/prices.
+
+        - HVAC clients: Uses HVACReceiptMetals table to store pre-defined weights/prices.
+
+        - All clients (including ‘other’ since they have no pre-defined tables): Uses userDefinedMetal table to store custom metals that don’t exist in the pre-defined tables.
+
+        - The input table includes columns for metal names, prices (modifiable, with option to reset to predefined prices from SetHVACPrices or SetAutoPrices tables), weights, and calculated totals (sum of all weight inputs for each metals type - all the rows under the name/price columns represent multiple weight inputs for the same metal). Ability to add rows/columns for additional weights/metals.
+
+        - Printing View: Displays the client name and location, as well as all totals and metals for printing and a line for customer sign-off. Interfacing with OS printers is required. Upon “Print” confirmation, data is sent to the database.
+
+
+**Detailed Logic:**
+- User Selection: Fills CreatedBy attribute in the Receipt table.
+- Client Selection: Fills ClientID and PaymentMethod in the Receipt table.
+- Metal Prices and Names: Predefined from SetAutoPrices or SetHVACPrices based on client type or none for 'other' - ‘other’ clients get an empty table that will be filled by the user making the receipt and everything is stored in the userDefinedMetal table.
+- Weights Input: Summed up for AutoReceiptMetals or HVACReceiptMetals tables. Prices can be modified in the receipt creation table.
+- User-defined Metals: Stored in the userDefinedMetal table - allows custom metal input (things not included in the pre-defined metals) for any type of client.
+- Date/Time: Automatically added to the Receipt upon creation and updates LastPickupDate for the client in the Client table.
+- Catalytic Converters (Auto clients): Stores part number/name, price, and % full in the CatalyticConverter table.
+
+
+**Extra Logic:**
+Total Payout: (Pre-defined weights * prices) + (user-defined weights * prices) + (catalytic price * percent full)
+
+Total Volume: (Pre-defined weights) + (user-defined weights)
+
+
+total payout/volume go on the Receipt table, and sum into the running totals in the Client table.
