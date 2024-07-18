@@ -1,26 +1,24 @@
-// components/ReceiptTable.jsx
 import React, { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
 import axiosInstance from '../axiosInstance';
 
+const formatNumberWithCommas = (number) => {
+  return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+
 const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
-  const [metals, setMetals] = useState({});
-  const [userDefinedMetals, setUserDefinedMetals] = useState([]);
-  const [catalyticConverters, setCatalyticConverters] = useState([]);
+  const [tableData, setTableData] = useState({
+    metals: {},
+    weights: [],
+    catalyticConverters: []
+  });
 
   const fetchPredefinedPrices = useCallback(async () => {
-    if (!clientType) {
-      console.error("ReceiptTable - Client type is undefined, skipping price fetch");
-      return;
-    }
+    if (!clientType) return;
     try {
-      console.log(`ReceiptTable - Fetching prices for client type: ${clientType}`);
-      const url = `${process.env.REACT_APP_API_URL}/api/rgc/metal-prices?clientType=${clientType}`;
-      console.log("ReceiptTable - Fetching from URL:", url);
-      const response = await axiosInstance.get(url);
-      console.log("ReceiptTable - Received prices:", response.data);
+      const response = await axiosInstance.get(`${process.env.REACT_APP_API_URL}/api/rgc/metal-prices?clientType=${clientType}`);
       initializeMetals(response.data);
     } catch (error) {
-      console.error('ReceiptTable - Error fetching predefined prices:', error);
+      console.error('Error fetching predefined prices:', error);
     }
   }, [clientType]);
 
@@ -31,188 +29,262 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
   }, [fetchPredefinedPrices, clientType]);
 
   const initializeMetals = (prices) => {
-    const initialMetals = {};
-    Object.entries(prices).forEach(([metal, price]) => {
-      initialMetals[metal] = { weight: 0, price: price };
-    });
-    setMetals(initialMetals);
-  };
-
-  const handleMetalChange = (metal, field, value) => {
-    setMetals(prevMetals => ({
-      ...prevMetals,
-      [metal]: { ...prevMetals[metal], [field]: parseFloat(value) || 0 }
+    const initialMetals = Object.entries(prices).reduce((acc, [key, value]) => {
+      acc[key] = { 
+        price: parseFloat(value) || 0, 
+        isCustom: false,
+        label: key
+      };
+      return acc;
+    }, {});
+    setTableData(prev => ({
+      ...prev,
+      metals: initialMetals,
+      weights: Array(10).fill(Array(Object.keys(initialMetals).length).fill(0))
     }));
   };
 
-  const handleUserDefinedMetalChange = (index, field, value) => {
-    const updatedMetals = [...userDefinedMetals];
-    updatedMetals[index][field] = field === 'name' ? value : parseFloat(value) || 0;
-    setUserDefinedMetals(updatedMetals);
+  const handlePriceChange = (metal, value) => {
+    setTableData(prev => ({
+      ...prev,
+      metals: {
+        ...prev.metals,
+        [metal]: { 
+          ...prev.metals[metal], 
+          price: value === '' ? 0 : parseFloat(value.replace(/^0+/, '')) || 0 
+        }
+      }
+    }));
+  };
+
+  const handleWeightChange = (rowIndex, colIndex, value) => {
+    setTableData(prev => {
+      const newWeights = [...prev.weights];
+      newWeights[rowIndex] = [...newWeights[rowIndex]];
+      newWeights[rowIndex][colIndex] = value === '' ? 0 : parseFloat(value.replace(/^0+/, '')) || 0;
+      return { ...prev, weights: newWeights };
+    });
+  };
+
+  const handleLabelChange = (metal, newLabel) => {
+    setTableData(prev => ({
+      ...prev,
+      metals: {
+        ...prev.metals,
+        [metal]: { ...prev.metals[metal], label: newLabel.trim() || 'Custom Metal' }
+      }
+    }));
+  };
+
+  const addWeightRow = () => {
+    setTableData(prev => ({
+      ...prev,
+      weights: [...prev.weights, Array(Object.keys(prev.metals).length).fill(0)]
+    }));
+  };
+
+  const addCustomMetal = () => {
+    const newMetalKey = `custom_${Object.keys(tableData.metals).length + 1}`;
+    setTableData(prev => ({
+      ...prev,
+      metals: {
+        ...prev.metals,
+        [newMetalKey]: { price: 0, isCustom: true, label: 'Custom Metal' }
+      },
+      weights: prev.weights.map(row => [...row, 0])
+    }));
   };
 
   const handleConverterChange = (index, field, value) => {
-    const updatedConverters = [...catalyticConverters];
-    updatedConverters[index][field] = field === 'partNumber' ? value : parseFloat(value) || 0;
-    setCatalyticConverters(updatedConverters);
-  };
-
-  const addUserDefinedMetal = () => {
-    setUserDefinedMetals([...userDefinedMetals, { name: '', price: 0, weight: 0 }]);
+    setTableData(prev => {
+      const newConverters = [...prev.catalyticConverters];
+      newConverters[index] = { 
+        ...newConverters[index], 
+        [field]: field === 'partNumber' 
+          ? value 
+          : (value === '' ? 0 : parseFloat(value.replace(/^0+/, '')) || 0)
+      };
+      return { ...prev, catalyticConverters: newConverters };
+    });
   };
 
   const addCatalyticConverter = () => {
-    setCatalyticConverters([...catalyticConverters, { partNumber: '', price: 0, percentFull: 100 }]);
+    setTableData(prev => ({
+      ...prev,
+      catalyticConverters: [...prev.catalyticConverters, { partNumber: '', price: 0, percentFull: 100 }]
+    }));
+  };
+
+  const calculateTotalWeight = (metalIndex) => {
+    return tableData.weights.reduce((sum, row) => sum + (row[metalIndex] || 0), 0);
   };
 
   const calculateTotalPayout = () => {
-    const metalsPayout = Object.values(metals).reduce((sum, metal) => sum + metal.price * metal.weight, 0);
-    const userDefinedPayout = userDefinedMetals.reduce((sum, metal) => sum + metal.price * metal.weight, 0);
-    const convertersPayout = catalyticConverters.reduce((sum, converter) => sum + converter.price * (converter.percentFull / 100), 0);
-    return metalsPayout + userDefinedPayout + convertersPayout;
-  };
-
-  const calculateTotalVolume = () => {
-    const metalsVolume = Object.values(metals).reduce((sum, metal) => sum + metal.weight, 0);
-    const userDefinedVolume = userDefinedMetals.reduce((sum, metal) => sum + metal.weight, 0);
-    return metalsVolume + userDefinedVolume;
+    const metalsPayout = Object.entries(tableData.metals).reduce((sum, [_, data], index) => {
+      return sum + data.price * calculateTotalWeight(index);
+    }, 0);
+    const convertersPayout = tableData.catalyticConverters.reduce((sum, converter) => {
+      return sum + converter.price * (converter.percentFull / 100);
+    }, 0);
+    return metalsPayout + convertersPayout;
   };
 
   useImperativeHandle(ref, () => ({
-    calculateTotalPayout,
-    calculateTotalVolume,
-    getMetals: () => metals,
-    getUserDefinedMetals: () => userDefinedMetals,
-    getCatalyticConverters: () => catalyticConverters,
+    getReceiptData: () => ({
+      metals: Object.entries(tableData.metals).reduce((acc, [key, data], index) => {
+        if (!data.isCustom) {
+          acc[data.label] = {
+            price: data.price,
+            weight: calculateTotalWeight(index)
+          };
+        }
+        return acc;
+      }, {}),
+      userDefinedMetals: Object.entries(tableData.metals).reduce((acc, [key, data], index) => {
+        if (data.isCustom) {
+          acc.push({
+            name: data.label,
+            price: data.price,
+            weight: calculateTotalWeight(index)
+          });
+        }
+        return acc;
+      }, []),
+      catalyticConverters: tableData.catalyticConverters,
+      totalPayout: calculateTotalPayout(),
+      totalVolume: Object.values(tableData.metals).reduce((sum, _, index) => sum + calculateTotalWeight(index), 0)
+    })
   }));
 
-  return (
-    <div>
-      <h3>Predefined Metals</h3>
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Metal</th>
-            <th>Price</th>
-            <th>Weight</th>
-            <th>Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.entries(metals).map(([metal, data]) => (
-            <tr key={metal}>
-              <td>{metal}</td>
-              <td>
-                <input
-                  type="number"
-                  value={data.price}
-                  onChange={(e) => handleMetalChange(metal, 'price', e.target.value)}
-                />
-              </td>
-              <td>
-                <input
-                  type="number"
-                  value={data.weight}
-                  onChange={(e) => handleMetalChange(metal, 'weight', e.target.value)}
-                />
-              </td>
-              <td>{(data.price * data.weight).toFixed(2)}</td>
-            </tr>
+  const renderTable = () => (
+    <table className="table table-bordered">
+      <thead>
+        <tr>
+          <th>Type</th>
+          {Object.entries(tableData.metals).map(([key, data]) => (
+            <th key={key}>
+              {data.isCustom ? (
+                <div
+                  contentEditable
+                  suppressContentEditableWarning
+                  onBlur={(e) => handleLabelChange(key, e.target.textContent)}
+                  style={{
+                    fontWeight: 'bold',
+                    minWidth: '100px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'visible'
+                  }}
+                >
+                  {data.label}
+                </div>
+              ) : (
+                data.label
+              )}
+            </th>
           ))}
-        </tbody>
-      </table>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Price</strong></td>
+          {Object.entries(tableData.metals).map(([metal, data]) => (
+            <td key={metal}>
+              <input
+                type="text"
+                value={data.price === 0 ? '' : data.price.toString()}
+                onChange={(e) => handlePriceChange(metal, e.target.value)}
+                className="form-control"
+              />
+              <span>${formatNumberWithCommas(data.price.toFixed(2))}/lb</span>
+            </td>
+          ))}
+        </tr>
+        {tableData.weights.map((row, rowIndex) => (
+          <tr key={rowIndex}>
+            <td><strong>{rowIndex === 0 ? 'Weights' : ''}</strong></td>
+            {row.map((weight, colIndex) => (
+              <td key={colIndex}>
+                <input
+                  type="text"
+                  value={weight === 0 ? '' : weight.toString()}
+                  onChange={(e) => handleWeightChange(rowIndex, colIndex, e.target.value)}
+                  className="form-control"
+                />
+              </td>
+            ))}
+          </tr>
+        ))}
+        <tr>
+          <td><strong>Total Weight</strong></td>
+          {Object.keys(tableData.metals).map((_, index) => (
+            <td key={index}><strong>{formatNumberWithCommas(calculateTotalWeight(index).toFixed(2))}</strong></td>
+          ))}
+        </tr>
+      </tbody>
+    </table>
+  );
 
-      <h3>User-Defined Metals</h3>
+  const renderCatalyticConverters = () => (
+    <div>
+      <h3>Catalytic Converters</h3>
       <table className="table">
         <thead>
           <tr>
-            <th>Metal</th>
+            <th>Part Number</th>
             <th>Price</th>
-            <th>Weight</th>
+            <th>Percent Full</th>
             <th>Total</th>
           </tr>
         </thead>
         <tbody>
-          {userDefinedMetals.map((metal, index) => (
+          {tableData.catalyticConverters.map((converter, index) => (
             <tr key={index}>
               <td>
                 <input
                   type="text"
-                  value={metal.name}
-                  onChange={(e) => handleUserDefinedMetalChange(index, 'name', e.target.value)}
+                  value={converter.partNumber}
+                  onChange={(e) => handleConverterChange(index, 'partNumber', e.target.value)}
+                  className="form-control"
                 />
               </td>
               <td>
                 <input
-                  type="number"
-                  value={metal.price}
-                  onChange={(e) => handleUserDefinedMetalChange(index, 'price', e.target.value)}
+                  type="text"
+                  value={converter.price === 0 ? '' : converter.price.toString()}
+                  onChange={(e) => handleConverterChange(index, 'price', e.target.value)}
+                  className="form-control"
                 />
               </td>
               <td>
                 <input
-                  type="number"
-                  value={metal.weight}
-                  onChange={(e) => handleUserDefinedMetalChange(index, 'weight', e.target.value)}
+                  type="text"
+                  value={converter.percentFull === 0 ? '' : converter.percentFull.toString()}
+                  onChange={(e) => handleConverterChange(index, 'percentFull', e.target.value)}
+                  className="form-control"
+                  min="0"
+                  max="100"
                 />
               </td>
-              <td>{(metal.price * metal.weight).toFixed(2)}</td>
+              <td>${formatNumberWithCommas((converter.price * (converter.percentFull / 100)).toFixed(2))}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <button onClick={addUserDefinedMetal}>Add User-Defined Metal</button>
+      <button className="btn btn-secondary" onClick={addCatalyticConverter}>Add Catalytic Converter</button>
+    </div>
+  );
 
-      {clientType === 'auto' && (
-        <>
-          <h3>Catalytic Converters</h3>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Part Number</th>
-                <th>Price</th>
-                <th>Percent Full</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {catalyticConverters.map((converter, index) => (
-                <tr key={index}>
-                  <td>
-                    <input
-                      type="text"
-                      value={converter.partNumber}
-                      onChange={(e) => handleConverterChange(index, 'partNumber', e.target.value)}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      value={converter.price}
-                      onChange={(e) => handleConverterChange(index, 'price', e.target.value)}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      value={converter.percentFull}
-                      onChange={(e) => handleConverterChange(index, 'percentFull', e.target.value)}
-                      min="0"
-                      max="100"
-                    />
-                  </td>
-                  <td>{(converter.price * (converter.percentFull / 100)).toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <button onClick={addCatalyticConverter}>Add Catalytic Converter</button>
-        </>
-      )}
-
-      <h3>Totals</h3>
-      <p>Total Payout: ${calculateTotalPayout().toFixed(2)}</p>
-      <p>Total Volume: {calculateTotalVolume().toFixed(2)} lbs</p>
+  return (
+    <div>
+      {renderTable()}
+      <div className="mt-3">
+        <button className="btn btn-secondary me-2" onClick={addWeightRow}>Add Weight Row</button>
+        <button className="btn btn-secondary" onClick={addCustomMetal}>Add Custom Metal</button>
+      </div>
+      {clientType === 'auto' && renderCatalyticConverters()}
+      <h3 className="mt-3">Totals</h3>
+      <p>Total Payout: ${formatNumberWithCommas(calculateTotalPayout().toFixed(2))}</p>
+      <p>Total Volume: {formatNumberWithCommas(Object.values(tableData.metals).reduce((sum, _, index) => sum + calculateTotalWeight(index), 0).toFixed(2))} lbs</p>
     </div>
   );
 });

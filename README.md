@@ -78,7 +78,11 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/t
 
 - make 'add user' a button that expands that option instead of having the menu there
 
-- establish logic for receipt creation
+- establish logic for receipt creation, need to link all fields and totals in the ReceiptTable.jsx to API's that will store everything in the correct database tables
+
+- create PrintView.jsx to allow user to print receipt and save data
+
+- handle offline issues: look into caching or local storage to save receipt data till the device reconnects to the internet to save data: allow printing without internet connection but let the user know the data wasn't saved for financial records due to poor internet/no connection 
 
 
 
@@ -95,13 +99,13 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/t
 
 4. Receipt Table: Modular input table based on client type:
 
-        - Auto clients: Uses AutoReceiptMetals table to store pre-defined weights/prices.
+        - Auto clients: Uses `AutoReceiptMetals` table to store pre-defined weights/prices.
 
-        - HVAC clients: Uses HVACReceiptMetals table to store pre-defined weights/prices.
+        - HVAC clients: Uses `HVACReceiptMetals` table to store pre-defined weights/prices.
 
-        - All clients (including ‘other’ since they have no pre-defined tables): Uses userDefinedMetal table to store custom metals that don’t exist in the pre-defined tables.
+        - All clients (including ‘other’ since they have no pre-defined tables): Uses `userDefinedMetal` table to store custom metals that don’t exist in the pre-defined tables.
 
-        - The input table includes columns for metal names, prices (modifiable, with option to reset to predefined prices from SetHVACPrices or SetAutoPrices tables), weights, and calculated totals (sum of all weight inputs for each metals type - all the rows under the name/price columns represent multiple weight inputs for the same metal). Ability to add rows/columns for additional weights/metals.
+        - The input table includes columns for metal names, prices (modifiable, with option to reset to predefined prices from `SetHVACPrices` or `SetAutoPrices` tables), weights, and calculated totals (sum of all weight inputs for each metals type - all the rows under the name/price columns represent multiple weight inputs for the same metal). Ability to add rows/columns for additional weights/metals.
 
         - Printing View: Displays the client name and location, as well as all totals and metals for printing and a line for customer sign-off. Interfacing with OS printers is required. Upon “Print” confirmation, data is sent to the database.
 
