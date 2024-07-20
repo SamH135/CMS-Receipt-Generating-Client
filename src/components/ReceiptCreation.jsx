@@ -1,3 +1,4 @@
+// ReceiptCreation.jsx
 import React, { useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -24,13 +25,15 @@ const ReceiptCreation = () => {
 
     const receiptData = {
       clientID: selectedClient.clientid,
+      clientName: selectedClient.clientname,
+      clientType: selectedClient.clienttype,
       createdBy,
       ...receiptTableRef.current.getReceiptData(),
     };
 
     try {
       const response = await axiosInstance.post(`${process.env.REACT_APP_API_URL}/api/rgc/receipts`, receiptData);
-      navigate('/print-preview', { state: { receiptData: response.data } });
+      navigate('/print-preview', { state: { receiptData: { ...receiptData, ...response.data } } });
     } catch (error) {
       console.error('Error submitting receipt:', error);
     }
