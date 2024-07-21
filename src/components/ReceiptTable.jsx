@@ -1,3 +1,4 @@
+// src/components/ReceiptTable.jsx
 import React, { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
 import axiosInstance from '../axiosInstance';
 
@@ -6,32 +7,41 @@ const formatNumberWithCommas = (number) => {
 };
 
 const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
-  const [tableData, setTableData] = useState({
-    metals: {},
-    weights: [],
-    catalyticConverters: []
+  const [tableData, setTableData] = useState(() => {
+    const savedData = localStorage.getItem(`receiptTableData_${clientID}`);
+    return savedData ? JSON.parse(savedData) : {
+      metals: {},
+      weights: [],
+      catalyticConverters: []
+    };
   });
 
+  const saveTableData = useCallback(() => {
+    localStorage.setItem(`receiptTableData_${clientID}`, JSON.stringify(tableData));
+  }, [tableData, clientID]);
+
+  useEffect(() => {
+    saveTableData();
+  }, [tableData, saveTableData]);
+
   const fetchPredefinedPrices = useCallback(async () => {
-    if (!clientType) return;
+    if (!clientType || Object.keys(tableData.metals).length > 0) return;
     try {
       const response = await axiosInstance.get(`${process.env.REACT_APP_API_URL}/api/rgc/metal-prices?clientType=${clientType}`);
       initializeMetals(response.data);
     } catch (error) {
       console.error('Error fetching predefined prices:', error);
     }
-  }, [clientType]);
+  }, [clientType, tableData.metals]);
 
   useEffect(() => {
-    if (clientType) {
-      fetchPredefinedPrices();
-    }
-  }, [fetchPredefinedPrices, clientType]);
+    fetchPredefinedPrices();
+  }, [fetchPredefinedPrices]);
 
   const initializeMetals = (prices) => {
     const initialMetals = Object.entries(prices).reduce((acc, [key, value]) => {
       acc[key] = { 
-        price: parseFloat(value) || 0, 
+        price: value.toString(),
         isCustom: false,
         label: key
       };
@@ -40,7 +50,7 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
     setTableData(prev => ({
       ...prev,
       metals: initialMetals,
-      weights: Array(10).fill(Array(Object.keys(initialMetals).length).fill(0))
+      weights: prev.weights.length > 0 ? prev.weights : Array(10).fill(Array(Object.keys(initialMetals).length).fill(0))
     }));
   };
 
@@ -51,7 +61,7 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
         ...prev.metals,
         [metal]: { 
           ...prev.metals[metal], 
-          price: value === '' ? 0 : parseFloat(value.replace(/^0+/, '')) || 0 
+          price: value
         }
       }
     }));
@@ -89,7 +99,7 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
       ...prev,
       metals: {
         ...prev.metals,
-        [newMetalKey]: { price: 0, isCustom: true, label: 'Custom Metal' }
+        [newMetalKey]: { price: '0', isCustom: true, label: 'Custom Metal' }
       },
       weights: prev.weights.map(row => [...row, 0])
     }));
@@ -121,7 +131,7 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
 
   const calculateTotalPayout = () => {
     const metalsPayout = Object.entries(tableData.metals).reduce((sum, [_, data], index) => {
-      return sum + data.price * calculateTotalWeight(index);
+      return sum + (parseFloat(data.price) || 0) * calculateTotalWeight(index);
     }, 0);
     const convertersPayout = tableData.catalyticConverters.reduce((sum, converter) => {
       return sum + converter.price * (converter.percentFull / 100);
@@ -134,17 +144,17 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
       metals: Object.entries(tableData.metals).reduce((acc, [key, data], index) => {
         if (!data.isCustom) {
           acc[data.label] = {
-            price: data.price,
+            price: parseFloat(data.price) || 0,
             weight: calculateTotalWeight(index)
           };
         }
         return acc;
       }, {}),
       userDefinedMetals: Object.entries(tableData.metals).reduce((acc, [key, data], index) => {
-        if (data.isCustom) {
+        if (data.isCustom && data.label.trim() !== '' && data.label !== 'Custom Metal') {
           acc.push({
             name: data.label,
-            price: data.price,
+            price: parseFloat(data.price) || 0,
             weight: calculateTotalWeight(index)
           });
         }
@@ -191,11 +201,11 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
             <td key={metal}>
               <input
                 type="text"
-                value={data.price === 0 ? '' : data.price.toString()}
+                value={data.price}
                 onChange={(e) => handlePriceChange(metal, e.target.value)}
                 className="form-control"
               />
-              <span>${formatNumberWithCommas(data.price.toFixed(2))}/lb</span>
+              <span>${formatNumberWithCommas(parseFloat(data.price || 0).toFixed(2))}/lb</span>
             </td>
           ))}
         </tr>

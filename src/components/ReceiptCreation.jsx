@@ -1,21 +1,28 @@
 // ReceiptCreation.jsx
 import React, { useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import ReceiptTable from './ReceiptTable';
 import axiosInstance from '../axiosInstance';
+import { setSelectedClient } from '../redux/actions/authActions';
 
 const ReceiptCreation = () => {
   const selectedClient = useSelector((state) => state.auth.selectedClient);
   const createdBy = useSelector((state) => state.auth.rgcUsername);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const receiptTableRef = useRef();
 
   useEffect(() => {
     if (!selectedClient) {
-      navigate('/client-selection');
+      const storedClient = JSON.parse(localStorage.getItem('selectedClient'));
+      if (storedClient) {
+        dispatch(setSelectedClient(storedClient));
+      } else {
+        navigate('/client-selection');
+      }
     }
-  }, [selectedClient, navigate]);
+  }, [selectedClient, navigate, dispatch]);
 
   const handleSubmit = async () => {
     if (!selectedClient || !receiptTableRef.current) {
@@ -33,6 +40,9 @@ const ReceiptCreation = () => {
 
     try {
       const response = await axiosInstance.post(`${process.env.REACT_APP_API_URL}/api/rgc/receipts`, receiptData);
+      // Clear localStorage after successful submission
+      localStorage.removeItem(`receiptTableData_${selectedClient.clientid}`);
+      localStorage.removeItem('selectedClient');
       navigate('/print-preview', { state: { receiptData: { ...receiptData, ...response.data } } });
     } catch (error) {
       console.error('Error submitting receipt:', error);
@@ -49,7 +59,7 @@ const ReceiptCreation = () => {
       <ReceiptTable 
         ref={receiptTableRef}
         clientType={selectedClient.clienttype} 
-        clientID={selectedClient.clientid} 
+        clientID={selectedClient.clientid}
       />
       <button className="btn btn-primary mt-3" onClick={handleSubmit}>Create Receipt</button>
     </div>

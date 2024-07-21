@@ -1,11 +1,10 @@
 // components/ClientSelection.jsx
-// ClientSelection.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { setSelectedClient } from '../redux/actions/authActions'; // Make sure this action exists
 import axiosInstance from '../axiosInstance';
 import Table from './Table';
+import { setSelectedClient } from '../redux/actions/authActions';
 
 const ClientSelection = () => {
   const token = useSelector((state) => state.auth.token);
@@ -15,34 +14,22 @@ const ClientSelection = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    console.log("ClientSelection - Component mounted");
     if (!token) {
-      console.log("ClientSelection - No token, redirecting to login");
       navigate('/rgc-login');
     } else {
       fetchClients();
     }
   }, [token, navigate]);
 
-  
-const fetchClients = async () => {
-  console.log("ClientSelection - Fetching clients");
-  try {
-    const response = await axiosInstance.get(`${process.env.REACT_APP_API_URL}/api/rgc/clientList`);
-    console.log("ClientSelection - Clients fetched:", response.data.clients);
-    // Make sure each client object has a clienttype property
-    setClients(response.data.clients);
-  } catch (error) {
-    console.error('ClientSelection - Error retrieving clients:', error);
-  }
-};
-
-  const handleClientClick = (client) => {
-    console.log("ClientSelection - Client selected:", client);
-    dispatch(setSelectedClient(client));
-    navigate('/receipt-creation');
+  const fetchClients = async () => {
+    try {
+      const response = await axiosInstance.get(`${process.env.REACT_APP_API_URL}/api/rgc/clientList`);
+      setClients(response.data.clients);
+    } catch (error) {
+      console.error('Error retrieving clients:', error);
+    }
   };
-
+  
   const handleSearch = async () => {
     try {
       const response = await axiosInstance.get(`${process.env.REACT_APP_API_URL}/api/rgc/searchClients?term=${encodeURIComponent(searchTerm)}`);
@@ -50,6 +37,12 @@ const fetchClients = async () => {
     } catch (error) {
       console.error('Error searching clients:', error);
     }
+  };
+
+  const handleClientClick = (client) => {
+    dispatch(setSelectedClient(client));
+    localStorage.setItem('selectedClient', JSON.stringify(client));
+    navigate('/receipt-creation');
   };
 
   return (
