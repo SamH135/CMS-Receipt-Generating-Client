@@ -1,5 +1,5 @@
 // src/components/ReceiptTable.jsx
-import React, { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle, useCallback, useRef } from 'react';
 import axiosInstance from '../axiosInstance';
 
 const formatNumberWithCommas = (number) => {
@@ -15,6 +15,8 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
       catalyticConverters: []
     };
   });
+
+  const tableRef = useRef(null);
 
   const saveTableData = useCallback(() => {
     localStorage.setItem(`receiptTableData_${clientID}`, JSON.stringify(tableData));
@@ -50,7 +52,7 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
     setTableData(prev => ({
       ...prev,
       metals: initialMetals,
-      weights: prev.weights.length > 0 ? prev.weights : Array(10).fill(Array(Object.keys(initialMetals).length).fill(0))
+      weights: prev.weights.length > 0 ? prev.weights : Array(10).fill(Array(Object.keys(initialMetals).length).fill(''))
     }));
   };
 
@@ -71,9 +73,37 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
     setTableData(prev => {
       const newWeights = [...prev.weights];
       newWeights[rowIndex] = [...newWeights[rowIndex]];
-      newWeights[rowIndex][colIndex] = value === '' ? 0 : parseFloat(value.replace(/^0+/, '')) || 0;
+      newWeights[rowIndex][colIndex] = value;
       return { ...prev, weights: newWeights };
     });
+  };
+
+  const moveToNextCell = (currentRow, currentCol) => {
+    const totalRows = tableData.weights.length;
+    const totalCols = Object.keys(tableData.metals).length;
+
+    let nextRow = currentRow + 1;
+    let nextCol = currentCol;
+
+    if (nextRow >= totalRows) {
+      addWeightRow();
+      nextRow = totalRows;
+    }
+
+    const nextInput = tableRef.current?.querySelector(
+      `input[data-row="${nextRow}"][data-col="${nextCol}"]`
+    );
+
+    if (nextInput) {
+      nextInput.focus();
+    }
+  };
+
+  const handleWeightKeyDown = (event, rowIndex, colIndex) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      moveToNextCell(rowIndex, colIndex);
+    }
   };
 
   const handleLabelChange = (metal, newLabel) => {
@@ -89,7 +119,7 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
   const addWeightRow = () => {
     setTableData(prev => ({
       ...prev,
-      weights: [...prev.weights, Array(Object.keys(prev.metals).length).fill(0)]
+      weights: [...prev.weights, Array(Object.keys(prev.metals).length).fill('')]
     }));
   };
 
@@ -99,9 +129,9 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
       ...prev,
       metals: {
         ...prev.metals,
-        [newMetalKey]: { price: '0', isCustom: true, label: 'Custom Metal' }
+        [newMetalKey]: { price: '', isCustom: true, label: 'Custom Metal' }
       },
-      weights: prev.weights.map(row => [...row, 0])
+      weights: prev.weights.map(row => [...row, ''])
     }));
   };
 
@@ -112,7 +142,7 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
         ...newConverters[index], 
         [field]: field === 'partNumber' 
           ? value 
-          : (value === '' ? 0 : parseFloat(value.replace(/^0+/, '')) || 0)
+          : (value === '' ? '' : parseFloat(value) || '')
       };
       return { ...prev, catalyticConverters: newConverters };
     });
@@ -121,12 +151,16 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
   const addCatalyticConverter = () => {
     setTableData(prev => ({
       ...prev,
-      catalyticConverters: [...prev.catalyticConverters, { partNumber: '', price: 0, percentFull: 100 }]
+      catalyticConverters: [...prev.catalyticConverters, { partNumber: '', price: '', percentFull: '' }]
     }));
   };
 
   const calculateTotalWeight = (metalIndex) => {
-    return tableData.weights.reduce((sum, row) => sum + (row[metalIndex] || 0), 0);
+    return tableData.weights.reduce((sum, row) => {
+      const weight = row[metalIndex];
+      const numericWeight = weight === '' ? 0 : parseFloat(weight) || 0;
+      return sum + numericWeight;
+    }, 0);
   };
 
   const calculateTotalPayout = () => {
@@ -134,7 +168,7 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
       return sum + (parseFloat(data.price) || 0) * calculateTotalWeight(index);
     }, 0);
     const convertersPayout = tableData.catalyticConverters.reduce((sum, converter) => {
-      return sum + converter.price * (converter.percentFull / 100);
+      return sum + (parseFloat(converter.price) || 0) * ((parseFloat(converter.percentFull) || 0) / 100);
     }, 0);
     return metalsPayout + convertersPayout;
   };
@@ -167,7 +201,7 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
   }));
 
   const renderTable = () => (
-    <table className="table table-bordered">
+    <table className="table table-bordered" ref={tableRef}>
       <thead>
         <tr>
           <th>Type</th>
@@ -216,9 +250,12 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
               <td key={colIndex}>
                 <input
                   type="text"
-                  value={weight === 0 ? '' : weight.toString()}
+                  value={weight}
                   onChange={(e) => handleWeightChange(rowIndex, colIndex, e.target.value)}
+                  onKeyDown={(e) => handleWeightKeyDown(e, rowIndex, colIndex)}
                   className="form-control"
+                  data-row={rowIndex}
+                  data-col={colIndex}
                 />
               </td>
             ))}
@@ -260,7 +297,7 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
               <td>
                 <input
                   type="text"
-                  value={converter.price === 0 ? '' : converter.price.toString()}
+                  value={converter.price}
                   onChange={(e) => handleConverterChange(index, 'price', e.target.value)}
                   className="form-control"
                 />
@@ -268,14 +305,14 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
               <td>
                 <input
                   type="text"
-                  value={converter.percentFull === 0 ? '' : converter.percentFull.toString()}
+                  value={converter.percentFull}
                   onChange={(e) => handleConverterChange(index, 'percentFull', e.target.value)}
                   className="form-control"
                   min="0"
                   max="100"
                 />
               </td>
-              <td>${formatNumberWithCommas((converter.price * (converter.percentFull / 100)).toFixed(2))}</td>
+              <td>${formatNumberWithCommas((parseFloat(converter.price) || 0) * ((parseFloat(converter.percentFull) || 0) / 100).toFixed(2))}</td>
             </tr>
           ))}
         </tbody>

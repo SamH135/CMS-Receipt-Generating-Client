@@ -191,7 +191,7 @@ table {
 
 th,
 td {
-  border: 1px solid #222831;
+  /* border: 1px solid #222831; */
   padding: 12px;
   text-align: left;
   transition: background-color 0.3s ease;
