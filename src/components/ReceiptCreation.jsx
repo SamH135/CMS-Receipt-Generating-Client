@@ -40,9 +40,14 @@ const ReceiptCreation = () => {
 
     try {
       const response = await axiosInstance.post(`${process.env.REACT_APP_API_URL}/api/rgc/receipts`, receiptData);
-      // Clear localStorage after successful submission
+      // Clear all related localStorage items
       localStorage.removeItem(`receiptTableData_${selectedClient.clientid}`);
+      localStorage.removeItem(`receiptData_${selectedClient.clientid}`);
       localStorage.removeItem('selectedClient');
+      // Clear the data in ReceiptTable component
+      if (receiptTableRef.current && receiptTableRef.current.clearLocalStorage) {
+        receiptTableRef.current.clearLocalStorage();
+      }
       navigate('/print-preview', { state: { receiptData: { ...receiptData, ...response.data } } });
     } catch (error) {
       console.error('Error submitting receipt:', error);

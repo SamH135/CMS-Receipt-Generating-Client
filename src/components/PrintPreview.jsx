@@ -1,5 +1,5 @@
 // PrintPreview.jsx
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
 
@@ -9,9 +9,26 @@ const PrintPreview = () => {
   const { receiptData } = location.state || {};
   const componentRef = useRef();
 
+  useEffect(() => {
+    // Clear localStorage when component mounts, in case user refreshes before printing
+    if (receiptData && receiptData.clientID) {
+      localStorage.removeItem(`receiptTableData_${receiptData.clientID}`);
+      localStorage.removeItem(`receiptData_${receiptData.clientID}`);
+    }
+    localStorage.removeItem('selectedClient');
+  }, [receiptData]);
+
   const handlePrint = useReactToPrint({
     content: () => componentRef.current,
-    onAfterPrint: () => navigate('/client-selection'),
+    onAfterPrint: () => {
+      // Clear any remaining localStorage data
+      if (receiptData && receiptData.clientID) {
+        localStorage.removeItem(`receiptTableData_${receiptData.clientID}`);
+        localStorage.removeItem(`receiptData_${receiptData.clientID}`);
+      }
+      localStorage.removeItem('selectedClient');
+      navigate('/client-selection');
+    },
   });
 
   if (!receiptData) {
