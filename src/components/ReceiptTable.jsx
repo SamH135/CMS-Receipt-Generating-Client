@@ -10,7 +10,8 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
   const [tableData, setTableData] = useState(() => {
     const savedData = localStorage.getItem(`receiptTableData_${clientID}`);
     return savedData ? JSON.parse(savedData) : {
-      metals: {},
+      predefinedMetals: {},
+      customMetals: {},
       weights: [],
       catalyticConverters: []
     };
@@ -27,18 +28,56 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
   }, [tableData, saveTableData]);
 
   const fetchPredefinedPrices = useCallback(async () => {
-    if (!clientType || Object.keys(tableData.metals).length > 0) return;
+    if (!clientType) return;
     try {
       const response = await axiosInstance.get(`${process.env.REACT_APP_API_URL}/api/rgc/metal-prices?clientType=${clientType}`);
-      initializeMetals(response.data);
+      updatePredefinedMetals(response.data);
     } catch (error) {
       console.error('Error fetching predefined prices:', error);
     }
-  }, [clientType, tableData.metals]);
+  }, [clientType]);
 
   useEffect(() => {
     fetchPredefinedPrices();
   }, [fetchPredefinedPrices]);
+
+  const updatePredefinedMetals = (newPrices) => {
+    setTableData(prev => {
+      const updatedPredefinedMetals = Object.entries(newPrices).reduce((acc, [key, value]) => {
+        acc[key] = { 
+          price: value.toString(),
+          isCustom: false,
+          label: key
+        };
+        return acc;
+      }, {});
+
+      // Merge updated predefined metals with existing custom metals
+      const updatedMetals = {
+        ...updatedPredefinedMetals,
+        ...prev.customMetals
+      };
+
+      // Ensure weights array has correct number of columns
+      const updatedWeights = prev.weights.length > 0 
+        ? prev.weights.map(row => {
+            const newRow = [...row];
+            while (newRow.length < Object.keys(updatedMetals).length) {
+              newRow.push('');
+            }
+            return newRow;
+          })
+        : Array(10).fill(Array(Object.keys(updatedMetals).length).fill(''));
+
+      return {
+        ...prev,
+        predefinedMetals: updatedPredefinedMetals,
+        customMetals: prev.customMetals,
+        metals: updatedMetals,
+        weights: updatedWeights
+      };
+    });
+  };
 
   const initializeMetals = (prices) => {
     const initialMetals = Object.entries(prices).reduce((acc, [key, value]) => {
@@ -124,15 +163,22 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
   };
 
   const addCustomMetal = () => {
-    const newMetalKey = `custom_${Object.keys(tableData.metals).length + 1}`;
-    setTableData(prev => ({
-      ...prev,
-      metals: {
-        ...prev.metals,
-        [newMetalKey]: { price: '', isCustom: true, label: 'Custom Metal' }
-      },
-      weights: prev.weights.map(row => [...row, ''])
-    }));
+    const newMetalKey = `custom_${Object.keys(tableData.customMetals).length + 1}`;
+    setTableData(prev => {
+      const newCustomMetal = { price: '', isCustom: true, label: 'Custom Metal' };
+      return {
+        ...prev,
+        customMetals: {
+          ...prev.customMetals,
+          [newMetalKey]: newCustomMetal
+        },
+        metals: {
+          ...prev.metals,
+          [newMetalKey]: newCustomMetal
+        },
+        weights: prev.weights.map(row => [...row, ''])
+      };
+    });
   };
 
   const handleConverterChange = (index, field, value) => {
