@@ -226,10 +226,28 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
     if (window.confirm("Are you sure you want to clear receipt data? You will lose all input for weights, custom metals, and catalytic converters if you do.")) {
       localStorage.removeItem(`receiptData_${clientID}`);
       fetchPredefinedPrices();
-      setShowCatalyticConverters(false);  // Hide catalytic converter section
+      setShowCatalyticConverters(false);
     }
   }, [clientID, fetchPredefinedPrices]);
 
+  const handleKeyDown = (event, rowIndex, colIndex) => {
+    if (event.key === 'Enter' || event.key === 'Return') {
+      event.preventDefault();
+      const nextInput = document.querySelector(`input[data-row="${rowIndex + 1}"][data-col="${colIndex}"]`);
+      if (nextInput) {
+        nextInput.focus();
+      } else {
+        // If there's no next row, add a new row and focus on its first cell
+        addWeightRow();
+        setTimeout(() => {
+          const newRowFirstCell = document.querySelector(`input[data-row="${tableData.weights.length}"][data-col="0"]`);
+          if (newRowFirstCell) {
+            newRowFirstCell.focus();
+          }
+        }, 0);
+      }
+    }
+  };
 
   const renderTable = () => (
     <table className="table table-bordered">
@@ -278,11 +296,14 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
           <tr key={rowIndex}>
             <td><strong>{rowIndex === 0 ? 'Weights' : ''}</strong></td>
             {row.map((weight, colIndex) => (
-              <td key={colIndex}>
+              <td key={`${rowIndex}-${colIndex}`}>
                 <input
                   type="text"
                   value={weight === 0 ? '' : weight.toString()}
                   onChange={(e) => handleWeightChange(rowIndex, colIndex, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(e, rowIndex, colIndex)}
+                  data-row={rowIndex}
+                  data-col={colIndex}
                   className="form-control"
                 />
               </td>
@@ -290,15 +311,15 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
           </tr>
         ))}
         <tr>
-  <td><strong>Total Weight</strong></td>
-  {Object.entries(tableData.metals).map(([metal, data], index) => (
-    <td style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
-      <strong>
-        {formatNumberWithCommas(calculateTotalWeight(index).toFixed(2))} lbs
-      </strong>
-    </td>
-  ))}
-</tr>
+          <td><strong>Total Weight</strong></td>
+          {Object.entries(tableData.metals).map(([metal, data], index) => (
+            <td key={metal} style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
+              <strong>
+                {formatNumberWithCommas(calculateTotalWeight(index).toFixed(2))} lbs
+              </strong>
+            </td>
+          ))}
+        </tr>
       </tbody>
     </table>
   );

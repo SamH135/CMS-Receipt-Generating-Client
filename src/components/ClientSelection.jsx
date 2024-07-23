@@ -59,7 +59,7 @@ const ClientSelection = () => {
         <div className="card">
           <div className="card-header text-center d-flex justify-content-center align-items-center">
             <img src="/client_list_button_icon.png" alt="Client icon" className="card-icon me-2" />
-            <strong>Select Client</strong>
+            <strong>Select client to make a receipt</strong>
           </div>
           <div className="card-body">
             <div className="search-container">

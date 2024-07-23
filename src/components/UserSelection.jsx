@@ -8,6 +8,7 @@ import axiosInstance from '../axiosInstance';
 const UserSelection = () => {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState('');
+  const [showAddUser, setShowAddUser] = useState(false);
   const [newUser, setNewUser] = useState({
     userID: '',
     username: '',
@@ -36,7 +37,7 @@ const UserSelection = () => {
   const handleUserSelect = () => {
     if (selectedUser) {
       dispatch(setRGCUsername(selectedUser));
-      localStorage.setItem('rgcUsername', selectedUser); // Explicitly set in localStorage
+      localStorage.setItem('rgcUsername', selectedUser);
       navigate('/client-selection');
     }
   };
@@ -61,7 +62,8 @@ const UserSelection = () => {
         setUsers([...users, response.data.username]);
         setNewUser({ userID: '', username: '', password: '', confirmPassword: '' });
         setSuccessMessage(response.data.message);
-        fetchUsers(); // Refresh the user list
+        fetchUsers();
+        setShowAddUser(false);
       } else {
         setError(response.data.message);
       }
@@ -73,7 +75,7 @@ const UserSelection = () => {
 
   return (
     <div className="container mt-5">
-      <h2>Select User</h2>
+      <h2>Who's making receipts?</h2>
       {error && <div className="alert alert-danger">{error}</div>}
       {successMessage && <div className="alert alert-success">{successMessage}</div>}
       <select
@@ -86,60 +88,67 @@ const UserSelection = () => {
           <option key={username} value={username}>{username}</option>
         ))}
       </select>
-      <button className="btn btn-primary" onClick={handleUserSelect}>Continue</button>
+      <button className="btn btn-primary mb-3" onClick={handleUserSelect}>Continue</button>
+      <br></br>
+      <br></br>
+      <h4>Don't see your name? Add yourself as a new user to the system.</h4>
+      <button className="btn btn-secondary mb-3" onClick={() => setShowAddUser(!showAddUser)}>
+        {showAddUser ? 'Cancel' : 'Add User'}
+      </button>
 
-      <h3 className="mt-5">Add New User</h3>
-      <form onSubmit={handleAddUser}>
-        <div className="form-group">
-          <label htmlFor="userID">User ID:</label>
-          <input
-            type="text"
-            className="form-control"
-            id="userID"
-            name="userID"
-            value={newUser.userID}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="username">Username:</label>
-          <input
-            type="text"
-            className="form-control"
-            id="username"
-            name="username"
-            value={newUser.username}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="password">Password:</label>
-          <input
-            type="password"
-            className="form-control"
-            id="password"
-            name="password"
-            value={newUser.password}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="confirmPassword">Confirm Password:</label>
-          <input
-            type="password"
-            className="form-control"
-            id="confirmPassword"
-            name="confirmPassword"
-            value={newUser.confirmPassword}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-        <button type="submit" className="btn btn-primary mt-3">Add User</button>
-      </form>
+      {showAddUser && (
+        <form onSubmit={handleAddUser}>
+          <div className="form-group">
+            <label htmlFor="userID">User ID:</label>
+            <input
+              type="text"
+              className="form-control"
+              id="userID"
+              name="userID"
+              value={newUser.userID}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="username">Username:</label>
+            <input
+              type="text"
+              className="form-control"
+              id="username"
+              name="username"
+              value={newUser.username}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="password">Password:</label>
+            <input
+              type="password"
+              className="form-control"
+              id="password"
+              name="password"
+              value={newUser.password}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="confirmPassword">Confirm Password:</label>
+            <input
+              type="password"
+              className="form-control"
+              id="confirmPassword"
+              name="confirmPassword"
+              value={newUser.confirmPassword}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+          <button type="submit" className="btn btn-primary mt-3">Add User</button>
+        </form>
+      )}
     </div>
   );
 };
