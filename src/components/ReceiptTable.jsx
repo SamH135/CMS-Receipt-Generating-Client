@@ -102,7 +102,15 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
     setTableData(prev => {
       const newWeights = [...prev.weights];
       newWeights[rowIndex] = [...newWeights[rowIndex]];
-      newWeights[rowIndex][colIndex] = value === '' ? 0 : parseFloat(value.replace(/^0+/, '')) || 0;
+      
+      // Allow empty string, "0", "0.", and valid decimal numbers
+      if (value === '' || value === '0' || value === '0.' || /^\d*\.?\d*$/.test(value)) {
+        newWeights[rowIndex][colIndex] = value;
+      } else {
+        // If the input is invalid, keep the previous value
+        return prev;
+      }
+  
       const newData = { ...prev, weights: newWeights };
       updateLocalStorage(newData);
       return newData;
@@ -179,7 +187,10 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
   }, [updateLocalStorage]);
 
   const calculateTotalWeight = useCallback((metalIndex) => {
-    return tableData.weights.reduce((sum, row) => sum + (row[metalIndex] || 0), 0);
+    return tableData.weights.reduce((sum, row) => {
+      const weight = parseFloat(row[metalIndex]) || 0;
+      return sum + weight;
+    }, 0);
   }, [tableData.weights]);
 
   const calculateTotalPayout = useCallback(() => {
