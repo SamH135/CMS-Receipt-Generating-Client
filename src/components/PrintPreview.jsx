@@ -36,11 +36,11 @@ const PrintPreview = () => {
 
   const ReceiptContent = () => (
     <div className="receipt-page">
-      <h2 className="receipt-title">Official Receipt</h2>
+      <h2 className="receipt-title">Sivils Core Buying and Metal Recycling</h2>
+      <h3>512-845-3533</h3>
       <div className="receipt-header">
         <h3>Client: {receiptData.clientName} (ID: {receiptData.clientID})</h3>
-        <h4>Client Type: {receiptData.clientType}</h4>
-        <h4>Receipt ID: {receiptData.receiptID}</h4>
+        <h3>Location: {receiptData.location}</h3>
         <h4>Date: {new Date().toLocaleDateString()}</h4>
       </div>
       <div className="receipt-separator">__________________________________________________________</div>
@@ -55,7 +55,7 @@ const PrintPreview = () => {
 
         {receiptData.userDefinedMetals.length > 0 && (
           <>
-            <h4>Custom Metals:</h4>
+            
             <ul>
               {receiptData.userDefinedMetals.map((metal, index) => (
                 <li key={index}>{metal.name}: {metal.weight} lbs @ ${metal.price}/lb = ${(metal.weight * metal.price).toFixed(2)}</li>
@@ -84,7 +84,6 @@ const PrintPreview = () => {
       </div>
       
       <div className="receipt-footer">
-        <p>Created By: {receiptData.createdBy}</p>
         <div className="receipt-signature">
           <p>Customer Signature: _____________________________</p>
           <p>Date: ________________</p>

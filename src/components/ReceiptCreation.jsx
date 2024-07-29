@@ -29,16 +29,16 @@ const ReceiptCreation = () => {
       console.error('Missing client or receipt table data');
       return;
     }
-
-    const receiptData = {
-      clientID: selectedClient.clientid,
-      clientName: selectedClient.clientname,
-      clientType: selectedClient.clienttype,
-      createdBy,
-      ...receiptTableRef.current.getReceiptData(),
-    };
-
+  
     try {
+      const receiptData = {
+        clientID: selectedClient.clientid,
+        clientName: selectedClient.clientname,
+        clientType: selectedClient.clienttype,
+        createdBy,
+        ...receiptTableRef.current.getReceiptData(),
+      };
+  
       const response = await axiosInstance.post(`${process.env.REACT_APP_API_URL}/api/rgc/receipts`, receiptData);
       // Clear all related localStorage items
       localStorage.removeItem(`receiptTableData_${selectedClient.clientid}`);
@@ -50,7 +50,11 @@ const ReceiptCreation = () => {
       }
       navigate('/print-preview', { state: { receiptData: { ...receiptData, ...response.data } } });
     } catch (error) {
-      console.error('Error submitting receipt:', error);
+      if (error.message === "You must name the custom metal or delete it from the receipt") {
+        alert(error.message);
+      } else {
+        console.error('Error submitting receipt:', error);
+      }
     }
   };
 

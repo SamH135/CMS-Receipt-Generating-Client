@@ -20,27 +20,43 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
   const fetchPredefinedPrices = useCallback(async () => {
     if (!clientType) return;
     try {
-      const response = await axiosInstance.get(`${process.env.REACT_APP_API_URL}/api/rgc/metal-prices?clientType=${clientType}`);
-      
-      const initializeMetals = (prices) => {
-        const initialMetals = Object.entries(prices).reduce((acc, [key, value]) => {
-          acc[key] = { 
-            price: value.toString(),
-            isCustom: false,
-            label: key
-          };
-          return acc;
-        }, {});
+      if (clientType === 'other') {
+        // For 'other' client type, create default custom metals
+        const defaultCustomMetals = {
+          custom_1: { price: '0', isCustom: true, label: 'Custom Metal' },
+          custom_2: { price: '0', isCustom: true, label: 'Custom Metal' },
+          custom_3: { price: '0', isCustom: true, label: 'Custom Metal' }
+        };
         const newTableData = {
-          metals: initialMetals,
-          weights: Array(10).fill(Array(Object.keys(initialMetals).length).fill(0)),
+          metals: defaultCustomMetals,
+          weights: Array(10).fill(Array(Object.keys(defaultCustomMetals).length).fill(0)),
           catalyticConverters: []
         };
         setTableData(newTableData);
         updateLocalStorage(newTableData);
-      };
+      } else {
+        const response = await axiosInstance.get(`${process.env.REACT_APP_API_URL}/api/rgc/metal-prices?clientType=${clientType}`);
+        
+        const initializeMetals = (prices) => {
+          const initialMetals = Object.entries(prices).reduce((acc, [key, value]) => {
+            acc[key] = { 
+              price: value.toString(),
+              isCustom: false,
+              label: key
+            };
+            return acc;
+          }, {});
+          const newTableData = {
+            metals: initialMetals,
+            weights: Array(10).fill(Array(Object.keys(initialMetals).length).fill(0)),
+            catalyticConverters: []
+          };
+          setTableData(newTableData);
+          updateLocalStorage(newTableData);
+        };
 
-      initializeMetals(response.data);
+        initializeMetals(response.data);
+      }
     } catch (error) {
       console.error('Error fetching predefined prices:', error);
     }
@@ -203,35 +219,71 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
     return metalsPayout + convertersPayout;
   }, [tableData.metals, tableData.catalyticConverters, calculateTotalWeight]);
 
+  const checkUnnamedCustomMetals = useCallback(() => {
+    const unnamedCustomMetals = Object.entries(tableData.metals).filter(([key, data]) => {
+      if (data.isCustom && (data.label === 'Custom Metal' || data.label.startsWith('Custom Metal '))) {
+        const index = Object.keys(tableData.metals).indexOf(key);
+        const totalWeight = calculateTotalWeight(index);
+        return totalWeight > 0 || parseFloat(data.price) > 0;
+      }
+      return false;
+    });
+  
+    if (unnamedCustomMetals.length > 0) {
+      throw new Error("You must name the custom metal or delete it from the receipt");
+    }
+  }, [tableData.metals, calculateTotalWeight]);
+
   useImperativeHandle(ref, () => ({
-    getReceiptData: () => ({
-      metals: Object.entries(tableData.metals).reduce((acc, [key, data], index) => {
-        if (!data.isCustom) {
-          acc[data.label] = {
-            price: parseFloat(data.price) || 0,
-            weight: calculateTotalWeight(index)
-          };
-        }
-        return acc;
-      }, {}),
-      userDefinedMetals: Object.entries(tableData.metals).reduce((acc, [key, data], index) => {
-        if (data.isCustom && data.label.trim() !== '' && data.label !== 'Custom Metal') {
-          acc.push({
-            name: data.label,
-            price: parseFloat(data.price) || 0,
-            weight: calculateTotalWeight(index)
-          });
-        }
-        return acc;
-      }, []),
-      catalyticConverters: tableData.catalyticConverters,
-      totalPayout: calculateTotalPayout(),
-      totalVolume: Object.values(tableData.metals).reduce((sum, _, index) => sum + calculateTotalWeight(index), 0)
-    }),
+    getReceiptData: () => {
+      checkUnnamedCustomMetals(); // This will throw an error if there are unnamed custom metals
+  
+      return {
+        metals: Object.entries(tableData.metals).reduce((acc, [key, data], index) => {
+          if (!data.isCustom) {
+            acc[data.label] = {
+              price: parseFloat(data.price) || 0,
+              weight: calculateTotalWeight(index)
+            };
+          }
+          return acc;
+        }, {}),
+        userDefinedMetals: Object.entries(tableData.metals).reduce((acc, [key, data], index) => {
+          if (data.isCustom && data.label.trim() !== '' && data.label !== 'Custom Metal') {
+            acc.push({
+              name: data.label,
+              price: parseFloat(data.price) || 0,
+              weight: calculateTotalWeight(index)
+            });
+          }
+          return acc;
+        }, []),
+        catalyticConverters: tableData.catalyticConverters,
+        totalPayout: calculateTotalPayout(),
+        totalVolume: Object.values(tableData.metals).reduce((sum, _, index) => sum + calculateTotalWeight(index), 0)
+      };
+    },
     clearLocalStorage: () => {
       localStorage.removeItem(`receiptData_${clientID}`);
     }
-  }), [tableData, calculateTotalWeight, calculateTotalPayout, clientID]);
+  }), [tableData, calculateTotalWeight, calculateTotalPayout, clientID, checkUnnamedCustomMetals]);
+
+  const handleRemoveCustomMetal = useCallback((metalKey) => {
+    if (window.confirm("Are you sure you want to remove this custom metal column?")) {
+      setTableData(prev => {
+        const { [metalKey]: removedMetal, ...remainingMetals } = prev.metals;
+        const metalIndex = Object.keys(prev.metals).indexOf(metalKey);
+        const newWeights = prev.weights.map(row => row.filter((_, index) => index !== metalIndex));
+        const newData = {
+          ...prev,
+          metals: remainingMetals,
+          weights: newWeights
+        };
+        updateLocalStorage(newData);
+        return newData;
+      });
+    }
+  }, [updateLocalStorage]);
 
   const handleClearReceiptData = useCallback(() => {
     if (window.confirm("Are you sure you want to clear receipt data? You will lose all input for weights, custom metals, and catalytic converters if you do.")) {
@@ -268,18 +320,28 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
           {Object.entries(tableData.metals).map(([key, data]) => (
             <th key={key}>
               {data.isCustom ? (
-                <div
-                  contentEditable
-                  suppressContentEditableWarning
-                  onBlur={(e) => handleLabelChange(key, e.target.textContent)}
-                  style={{
-                    fontWeight: 'bold',
-                    minWidth: '100px',
-                    whiteSpace: 'nowrap',
-                    overflow: 'visible'
-                  }}
-                >
-                  {data.label}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div
+                    contentEditable
+                    suppressContentEditableWarning
+                    onBlur={(e) => handleLabelChange(key, e.target.textContent)}
+                    style={{
+                      fontWeight: 'bold',
+                      minWidth: '100px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'visible',
+                      color: data.label === 'Custom Metal' || data.label.startsWith('Custom Metal ') ? 'red' : 'inherit'
+                    }}
+                  >
+                    {data.label}
+                  </div>
+                  <button
+                    className="btn btn-sm btn-danger"
+                    onClick={() => handleRemoveCustomMetal(key)}
+                    style={{ marginLeft: '5px' }}
+                  >
+                    X
+                  </button>
                 </div>
               ) : (
                 data.label
