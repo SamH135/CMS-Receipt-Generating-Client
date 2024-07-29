@@ -229,3 +229,94 @@ body {
   background-color: #f0f0f0;
   margin: 20px 0;
 }
+
+
+
+/* PrintPreview.jsx Styles */
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  .receipt-page {
+    page-break-after: always;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .receipt-page:last-child {
+    page-break-after: avoid;
+  }
+
+  .btn {
+    display: none;
+  }
+}
+
+.receipt-page {
+  font-family: Helvetica, Arial, sans-serif;
+  max-width: 8.5in;
+  margin: 0 auto;
+  padding: 0.5in;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.company-name {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 0;
+}
+
+.phone-number {
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.receipt-header {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+
+.metals-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+  font-size: 10px;
+}
+
+.metals-table th,
+.metals-table td {
+  border: 1px solid #ddd;
+  padding: 4px;
+  text-align: center;
+}
+
+.metals-table th {
+  background-color: #f2f2f2;
+}
+
+.receipt-summary {
+  margin-top: 10px;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.receipt-footer {
+  margin-top: 20px;
+  font-size: 12px;
+}
+
+@media screen {
+  .print-preview-container {
+    max-width: 8.5in;
+    margin: 0 auto;
+  }
+
+  .receipt-page {
+    border: 1px solid #ddd;
+    margin-bottom: 20px;
+  }
+}
