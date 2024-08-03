@@ -30,7 +30,7 @@ const PrintPreview = () => {
     return <div>No receipt data available</div>;
   }
 
-  const ReceiptContent = () => (
+  const ReceiptContent = ({ isCustomerCopy }) => (
     <div className="receipt-page">
       <h1 className="company-name">Sivils Core Buying and Metal Recycling</h1>
       <p className="phone-number">512-845-3533</p>
@@ -45,8 +45,12 @@ const PrintPreview = () => {
           <tr>
             <th>Metal</th>
             <th>Weight (lbs)</th>
-            <th>Price/lb</th>
-            <th>Total</th>
+            {(!isCustomerCopy || !receiptData.isCorporate) && (
+              <>
+                <th>Price/lb</th>
+                <th>Total</th>
+              </>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -54,16 +58,24 @@ const PrintPreview = () => {
             <tr key={metal}>
               <td>{metal}</td>
               <td>{data.weight}</td>
-              <td>${data.price}</td>
-              <td>${(data.weight * data.price).toFixed(2)}</td>
+              {(!isCustomerCopy || !receiptData.isCorporate) && (
+                <>
+                  <td>${data.price}</td>
+                  <td>${(data.weight * data.price).toFixed(2)}</td>
+                </>
+              )}
             </tr>
           ))}
           {receiptData.userDefinedMetals.map((metal, index) => (
             <tr key={`custom-${index}`}>
               <td>{metal.name}</td>
               <td>{metal.weight}</td>
-              <td>${metal.price}</td>
-              <td>${(metal.weight * metal.price).toFixed(2)}</td>
+              {(!isCustomerCopy || !receiptData.isCorporate) && (
+                <>
+                  <td>${metal.price}</td>
+                  <td>${(metal.weight * metal.price).toFixed(2)}</td>
+                </>
+              )}
             </tr>
           ))}
         </tbody>
@@ -71,12 +83,13 @@ const PrintPreview = () => {
 
       <div className="receipt-summary">
         <p><strong>Total Volume:</strong> {receiptData.totalVolume.toFixed(2)} lbs</p>
-        <p><strong>Total Payout:</strong> ${receiptData.totalPayout.toFixed(2)}</p>
+        {(!isCustomerCopy || !receiptData.isCorporate) && (
+          <p><strong>Total Payout:</strong> ${receiptData.totalPayout.toFixed(2)}</p>
+        )}
       </div>
       
       <div className="receipt-footer">
         <p>Customer Signature: _____________________________</p>
-        
       </div>
     </div>
   );
@@ -84,8 +97,9 @@ const PrintPreview = () => {
   return (
     <div className="print-preview-container">
       <div ref={componentRef}>
-        <ReceiptContent />
-        <ReceiptContent />
+        <ReceiptContent isCustomerCopy={false} />
+        <div style={{ pageBreakBefore: 'always' }}></div>
+        <ReceiptContent isCustomerCopy={true} />
       </div>
       <button className="btn btn-primary mt-3" onClick={handlePrint}>Print Receipt</button>
     </div>

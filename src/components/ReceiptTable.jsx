@@ -5,6 +5,12 @@ const formatNumberWithCommas = (number) => {
   return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
 
+const formatCurrency = (value) => {
+  const absValue = Math.abs(value);
+  const formattedAbsValue = absValue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return value < 0 ? `-$${formattedAbsValue}` : `$${formattedAbsValue}`;
+};
+
 const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
   const [tableData, setTableData] = useState({
     metals: {},
@@ -13,9 +19,23 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
   });
   const [showCatalyticConverters, setShowCatalyticConverters] = useState(false);
 
+  const [lessCost, setLessCost] = useState(() => {
+    const storedData = localStorage.getItem(`receiptData_${clientID}`);
+    if (storedData) {
+      const parsedData = JSON.parse(storedData);
+      return parsedData.lessCost || '';
+    }
+    return '';
+  });
+
   const updateLocalStorage = useCallback((newData) => {
-    localStorage.setItem(`receiptData_${clientID}`, JSON.stringify(newData));
-  }, [clientID]);
+    localStorage.setItem(`receiptData_${clientID}`, JSON.stringify({
+      ...newData,
+      lessCost: newData.lessCost || lessCost
+    }));
+  }, [clientID, lessCost]);
+
+
 
   const fetchPredefinedPrices = useCallback(async () => {
     if (!clientType) return;
@@ -96,6 +116,19 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [fetchPredefinedPrices, clientType, clientID]);
+
+  // for hvac receipts less cost functionality
+  const handleLessCostChange = useCallback((value) => {
+    // Allow empty string, "0", "0.", and valid decimal numbers
+    if (value === '' || value === '0' || value === '0.' || /^\d*\.?\d*$/.test(value)) {
+      setLessCost(value);
+      setTableData(prev => {
+        const newData = { ...prev, lessCost: value };
+        updateLocalStorage(newData);
+        return newData;
+      });
+    }
+  }, [updateLocalStorage]);
 
   const handlePriceChange = useCallback((metal, value) => {
     setTableData(prev => {
@@ -209,6 +242,7 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
     }, 0);
   }, [tableData.weights]);
 
+
   const calculateTotalPayout = useCallback(() => {
     const metalsPayout = Object.entries(tableData.metals).reduce((sum, [_, data], index) => {
       return sum + (parseFloat(data.price) || 0) * calculateTotalWeight(index);
@@ -216,8 +250,9 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
     const convertersPayout = tableData.catalyticConverters.reduce((sum, converter) => {
       return sum + converter.price * (converter.percentFull / 100);
     }, 0);
-    return metalsPayout + convertersPayout;
-  }, [tableData.metals, tableData.catalyticConverters, calculateTotalWeight]);
+    return metalsPayout + convertersPayout - (parseFloat(lessCost) || 0);
+  }, [tableData.metals, tableData.catalyticConverters, calculateTotalWeight, lessCost]);
+  
 
   const checkUnnamedCustomMetals = useCallback(() => {
     const unnamedCustomMetals = Object.entries(tableData.metals).filter(([key, data]) => {
@@ -259,14 +294,16 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
           return acc;
         }, []),
         catalyticConverters: tableData.catalyticConverters,
+        lessCost: parseFloat(lessCost) || 0,
         totalPayout: calculateTotalPayout(),
         totalVolume: Object.values(tableData.metals).reduce((sum, _, index) => sum + calculateTotalWeight(index), 0)
       };
     },
     clearLocalStorage: () => {
       localStorage.removeItem(`receiptData_${clientID}`);
+      setLessCost('');
     }
-  }), [tableData, calculateTotalWeight, calculateTotalPayout, clientID, checkUnnamedCustomMetals]);
+  }), [tableData, calculateTotalWeight, calculateTotalPayout, clientID, checkUnnamedCustomMetals, lessCost]);
 
   const handleRemoveCustomMetal = useCallback((metalKey) => {
     if (window.confirm("Are you sure you want to remove this custom metal column?")) {
@@ -472,8 +509,21 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
       </div>
       {clientType === 'auto' && showCatalyticConverters && renderCatalyticConverters()}
       <br />
+      
+      {clientType === 'hvac' && (
+        <div className="mt-3">
+          <label htmlFor="lessCost">Less Cost:</label>
+          <input
+            type="text"
+            id="lessCost"
+            value={lessCost}
+            onChange={(e) => handleLessCostChange(e.target.value)}
+            className="form-control"
+          />
+        </div>
+      )}
       <h3 className="mt-3">Totals</h3>
-      <p>Total Payout: ${formatNumberWithCommas(calculateTotalPayout().toFixed(2))}</p>
+      <p>Total Payout: {formatCurrency(calculateTotalPayout().toFixed(2))}</p>
       <p>Total Volume: {formatNumberWithCommas(Object.values(tableData.metals).reduce((sum, _, index) => sum + calculateTotalWeight(index), 0).toFixed(2))} lbs</p>
     </div>
   );

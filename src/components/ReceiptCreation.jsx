@@ -1,10 +1,11 @@
 // ReceiptCreation.jsx
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import ReceiptTable from './ReceiptTable';
 import axiosInstance from '../axiosInstance';
 import { setSelectedClient } from '../redux/actions/authActions';
+
 
 const ReceiptCreation = () => {
   const selectedClient = useSelector((state) => state.auth.selectedClient);
@@ -12,6 +13,7 @@ const ReceiptCreation = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const receiptTableRef = useRef();
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     if (!selectedClient) {
@@ -24,18 +26,24 @@ const ReceiptCreation = () => {
     }
   }, [selectedClient, navigate, dispatch]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!selectedClient || !receiptTableRef.current) {
       console.error('Missing client or receipt table data');
       return;
     }
-  
+    setShowModal(true);
+  };
+
+  const confirmSubmit = async (isCorporate) => {
+    setShowModal(false);
+    
     try {
       const receiptData = {
         clientID: selectedClient.clientid,
         clientName: selectedClient.clientname,
         clientType: selectedClient.clienttype,
         createdBy,
+        isCorporate,
         ...receiptTableRef.current.getReceiptData(),
       };
   
@@ -58,19 +66,32 @@ const ReceiptCreation = () => {
     }
   };
 
-  if (!selectedClient) {
-    return null;
-  }
-
   return (
     <div className="container mt-5">
-      <h2>Create Receipt for {selectedClient.clientname}</h2>
+      <h2>Create Receipt for {selectedClient?.clientname}</h2>
       <ReceiptTable 
         ref={receiptTableRef}
-        clientType={selectedClient.clienttype} 
-        clientID={selectedClient.clientid}
+        clientType={selectedClient?.clienttype} 
+        clientID={selectedClient?.clientid}
       />
       <button className="btn btn-primary mt-3" onClick={handleSubmit}>Create Receipt</button>
+
+      {showModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Corporate Client Confirmation</h2>
+            <p>Is this a corporate client that requires price information to be excluded from the customer copy?</p>
+            <div className="modal-buttons">
+              <button className="btn btn-secondary" onClick={() => confirmSubmit(true)}>
+                Yes, Corporate Client
+              </button>
+              <button className="btn btn-primary" onClick={() => confirmSubmit(false)}>
+                No, Regular Client
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
