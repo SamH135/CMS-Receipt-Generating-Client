@@ -495,12 +495,14 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
         className="btn btn-danger" 
         onClick={handleClearReceiptData}
       >
-        Clear Receipt Data
+        Reset Receipt Data
       </button>
       {renderTable()}
       <div className="mt-3">
         <button className="btn btn-secondary me-2" onClick={addWeightRow}>Add Weight Row</button>
+        
         <button className="btn btn-secondary me-2" onClick={addCustomMetal}>Add Custom Metal</button>
+        
         {clientType === 'auto' && (
           <button className="btn btn-secondary" onClick={addCatalyticConverter}>
             {showCatalyticConverters ? 'Add Another Catalytic Converter' : 'Add Catalytic Converter'}
@@ -522,9 +524,11 @@ const ReceiptTable = forwardRef(({ clientType, clientID }, ref) => {
           />
         </div>
       )}
+
       <h3 className="mt-3">Totals</h3>
       <p>Total Payout: {formatCurrency(calculateTotalPayout().toFixed(2))}</p>
       <p>Total Volume: {formatNumberWithCommas(Object.values(tableData.metals).reduce((sum, _, index) => sum + calculateTotalWeight(index), 0).toFixed(2))} lbs</p>
+      <p>___________________________________________</p>
     </div>
   );
 });

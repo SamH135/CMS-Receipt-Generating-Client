@@ -1,11 +1,11 @@
-// ReceiptCreation.jsx
+// src/components/ReceiptCreation.jsx
+
 import React, { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import ReceiptTable from './ReceiptTable';
 import axiosInstance from '../axiosInstance';
 import { setSelectedClient } from '../redux/actions/authActions';
-
 
 const ReceiptCreation = () => {
   const selectedClient = useSelector((state) => state.auth.selectedClient);
@@ -14,6 +14,9 @@ const ReceiptCreation = () => {
   const dispatch = useDispatch();
   const receiptTableRef = useRef();
   const [showModal, setShowModal] = useState(false);
+  const [checkNumber, setCheckNumber] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [showCheckPrompt, setShowCheckPrompt] = useState(false);
 
   useEffect(() => {
     if (!selectedClient) {
@@ -26,12 +29,34 @@ const ReceiptCreation = () => {
     }
   }, [selectedClient, navigate, dispatch]);
 
+  useEffect(() => {
+    if (selectedClient) {
+      setPaymentMethod(selectedClient.paymentmethod);
+    }
+  }, [selectedClient]);
+
   const handleSubmit = () => {
     if (!selectedClient || !receiptTableRef.current) {
       console.error('Missing client or receipt table data');
       return;
     }
-    setShowModal(true);
+    if (paymentMethod === 'Check' && !checkNumber.trim()) {
+      setShowCheckPrompt(true);
+    } else {
+      setShowModal(true);
+    }
+  };
+
+  const handleCheckPromptResponse = (includeCheckNumber) => {
+    setShowCheckPrompt(false);
+    if (includeCheckNumber) {
+      // User wants to include a check number, focus on the input
+      document.getElementById('checkNumber').focus();
+    } else {
+      // User opts out, set default check number and proceed
+      setCheckNumber('0000');
+      setShowModal(true);
+    }
   };
 
   const confirmSubmit = async (isCorporate) => {
@@ -44,6 +69,7 @@ const ReceiptCreation = () => {
         clientType: selectedClient.clienttype,
         createdBy,
         isCorporate,
+        checkNumber: checkNumber.trim() || null,
         ...receiptTableRef.current.getReceiptData(),
       };
   
@@ -69,12 +95,48 @@ const ReceiptCreation = () => {
   return (
     <div className="container mt-5">
       <h2>Create Receipt for {selectedClient?.clientname}</h2>
+
       <ReceiptTable 
         ref={receiptTableRef}
         clientType={selectedClient?.clienttype} 
         clientID={selectedClient?.clientid}
       />
-      <button className="btn btn-primary mt-3" onClick={handleSubmit}>Create Receipt</button>
+
+      <div className="mb-3">
+        <label htmlFor="checkNumber" className="form-label">
+          Check Number {paymentMethod === 'Check' ? '(Requested)' : '(Optional)'}:
+        </label>
+        <input
+          type="text"
+          className="form-control"
+          id="checkNumber"
+          value={checkNumber}
+          onChange={(e) => setCheckNumber(e.target.value)}
+        />
+      </div>
+      <button 
+        className="btn btn-primary mt-3" 
+        onClick={handleSubmit}
+      >
+        Create Receipt
+      </button>
+
+      {showCheckPrompt && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Check Number</h2>
+            <p>Do you want to include a check number now?</p>
+            <div className="modal-buttons">
+              <button className="btn btn-secondary" onClick={() => handleCheckPromptResponse(true)}>
+                Yes, I'll enter it now
+              </button>
+              <button className="btn btn-primary" onClick={() => handleCheckPromptResponse(false)}>
+                No, I'll fill it in later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div className="modal-overlay">

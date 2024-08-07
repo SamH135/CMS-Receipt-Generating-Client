@@ -38,6 +38,12 @@ const PrintPreview = () => {
         <p><strong>Client:</strong> {receiptData.clientName} (ID: {receiptData.clientID})</p>
         <p><strong>Location:</strong> {receiptData.clientLocation}</p>
         <p><strong>Date:</strong> {new Date().toLocaleDateString()}</p>
+        {receiptData.checkNumber && (
+          <p>
+            <strong>Check Number: </strong> 
+            {receiptData.checkNumber === '0000' ? '_________' : receiptData.checkNumber}
+          </p>
+        )}
       </div>
       
       <table className="metals-table">

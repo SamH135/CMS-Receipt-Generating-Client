@@ -93,6 +93,7 @@ const ClientSelection = () => {
                 { header: 'Client ID', field: 'clientid' },
                 { header: 'Client Name', field: 'clientname' },
                 { header: 'Location', field: 'clientlocation' },
+                { header: 'Payment Method', field: 'paymentmethod' },
               ]}
               data={clients}
               onRowClick={handleClientClick}
