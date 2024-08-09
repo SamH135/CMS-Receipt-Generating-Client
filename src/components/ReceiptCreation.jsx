@@ -92,6 +92,15 @@ const ReceiptCreation = () => {
     }
   };
 
+
+  const handleCheckNumberChange = (e) => {
+    const value = e.target.value;
+    // Allow only numeric input
+    if (value === '' || /^\d+$/.test(value)) {
+      setCheckNumber(value);
+    }
+  };
+
   return (
     <div className="container mt-5">
       <h2>Create Receipt for {selectedClient?.clientname}</h2>
@@ -111,7 +120,8 @@ const ReceiptCreation = () => {
           className="form-control"
           id="checkNumber"
           value={checkNumber}
-          onChange={(e) => setCheckNumber(e.target.value)}
+          onChange={handleCheckNumberChange}
+          required
         />
       </div>
       <button 
